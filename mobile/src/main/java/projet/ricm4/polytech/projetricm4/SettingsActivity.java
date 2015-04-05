@@ -44,6 +44,7 @@ public class SettingsActivity extends PreferenceActivity
         // updated when the preference changes.
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_range_key)));
         bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_trnspt_key)));
+        bindPreferenceSummaryToValue(findPreference(getString(R.string.pref_type_key)));
     }
 
     /**

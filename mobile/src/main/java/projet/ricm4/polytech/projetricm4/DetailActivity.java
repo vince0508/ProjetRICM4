@@ -30,8 +30,17 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.ImageView;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
+import android.os.AsyncTask;
 
+import java.net.MalformedURLException;
+import java.net.URL;
+import android.view.View;
 public class DetailActivity extends ActionBarActivity {
 
     DetailFragment detailFragment = new DetailFragment();
@@ -47,6 +56,7 @@ public class DetailActivity extends ActionBarActivity {
                     .commit();
         }
     }
+
 
 
     @Override
@@ -90,14 +100,26 @@ public class DetailActivity extends ActionBarActivity {
                 mForecastStr = intent.getStringExtra(Intent.EXTRA_TEXT);
                 mForecastDet=null;
                 int i = 0;
-                String[] mForecastSplit = new String[5];
+                String[] mForecastSplit = new String[9];
                     for(String retval: mForecastStr.split("\n")){
                         mForecastSplit[i]=retval;
                         i++;
                     }
-                    mForecastDet = mForecastSplit[0] + "\n" + mForecastSplit[1] + "\n" + mForecastSplit[4];
+                    mForecastDet = mForecastSplit[0] + "\n" + mForecastSplit[1] + "\n" + mForecastSplit[4] + "\n" +mForecastSplit[5] + "\n" +mForecastSplit[6] + "\n" +mForecastSplit[7];
                 ((TextView) rootView.findViewById(R.id.detail_text))
                         .setText(mForecastDet);
+
+            }
+
+           if (intent != null && intent.hasExtra("icon")) {
+
+                byte[] byteArray = intent.getByteArrayExtra("icon");
+                Bitmap bmp = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
+                ImageView img = (ImageView) rootView.findViewById(R.id.imageView1);
+                if (bmp != null){
+                    Log.d(LOG_TAG, "bmp pas null !!!!!");
+                    img.setImageBitmap(bmp);}
+
             }
             return rootView;
         }
@@ -134,7 +156,7 @@ public class DetailActivity extends ActionBarActivity {
 
         private String buildGoogleMapURL() {
 
-            String[] mForecastSplit = new String[5];
+            String[] mForecastSplit = new String[9];
 
             int i=0;
             for(String retval: mForecastStr.split("\n")){
@@ -156,6 +178,7 @@ public class DetailActivity extends ActionBarActivity {
             url.append(latitude);
             url.append(",");
             url.append(longitude);
+
             url.append("&ie=UTF8&0&om=0&output=kml");
             System.out.println(url);
             return url.toString();
@@ -168,6 +191,9 @@ public class DetailActivity extends ActionBarActivity {
         }
 
     }
+
+
+
 
 
 

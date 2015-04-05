@@ -15,6 +15,17 @@
         android:gravity="center_vertical"
         android:fontFamily="sans-serif-condensed"
         android:textSize="20sp"/>
-        />
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/imageView1"
+        android:contentDescription="@string/icon"
+        android:minHeight="150dp"
+        android:minWidth="150dp"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="130dp" />
+    />
 
 </RelativeLayout>

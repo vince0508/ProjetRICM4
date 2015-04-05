@@ -17,5 +17,12 @@
         android:entryValues="@array/pref_trnspt_values"
         android:entries="@array/pref_trnspt_options" />
 
+    <ListPreference
+        android:title="@string/type_recherche"
+        android:key="@string/pref_type_key"
+        android:defaultValue="@string/pref_type_default"
+        android:entryValues="@array/pref_type_values"
+        android:entries="@array/pref_type_options" />
+
 
 </PreferenceScreen>

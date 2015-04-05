@@ -18,6 +18,8 @@ package projet.ricm4.polytech.projetricm4;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -32,6 +34,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 
 import com.google.android.gms.common.api.GoogleApiClient;
@@ -39,7 +42,7 @@ import com.google.android.gms.wearable.MessageApi;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.NodeApi;
 import com.google.android.gms.wearable.Wearable;
-
+import java.io.ByteArrayOutputStream;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -49,6 +52,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -62,6 +66,8 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
 
     private ArrayAdapter<String> mForecastAdapter;
     private ArrayAdapter<String> mForecastAdapterDetails;
+
+    private  Bitmap bmpIcon = null;
 
     //Roue de chargement
     protected ProgressDialog myProgressDialog;
@@ -120,14 +126,24 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
         // Get a reference to the ListView, and attach this adapter to it.
         ListView listView = (ListView) rootView.findViewById(R.id.listview_forecast);
 
+
+
+
+
+
+
         listView.setAdapter(mForecastAdapter);
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
 
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                bmpIcon.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                final byte[] byteArray = stream.toByteArray();
                 String forecast = mForecastAdapterDetails.getItem(position);
                 Intent intent = new Intent(getActivity(), DetailActivity.class)
-                        .putExtra(Intent.EXTRA_TEXT, forecast);
+                        .putExtra(Intent.EXTRA_TEXT, forecast)
+                        .putExtra("icon", byteArray);
                 startActivity(intent);
             }
         });
@@ -152,6 +168,13 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
         String tspType = sharedPrefs.getString(
                 getString(R.string.pref_trnspt_key),
                 getString(R.string.pref_trnspt_pied));
+
+        SharedPreferences sPrefs =
+                PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String typePOI = sharedPrefs.getString(
+                getString(R.string.pref_type_key),
+                "restaurant");
+
         String modeTsp;
         if (tspType.equals(getString(R.string.pref_trnspt_voiture))) {
             modeTsp = "driving";
@@ -159,12 +182,13 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
             modeTsp = "walking";
         }
 
-        if(range!=Utility.actualRange || modeTsp != Utility.actualTrspt){
+        if(range!=Utility.actualRange || modeTsp != Utility.actualTrspt || typePOI != Utility.actualType ){
            myProgressDialog = ProgressDialog.show(getActivity(),
                   "", "Chargement", true);
             Utility.nextPageToken=null;
             Utility.actualRange = range;
             Utility.actualTrspt = modeTsp;
+            Utility.actualType = typePOI;
             weatherTask.execute(range);
         }
         sendMessage(WEAR_MESSAGE_PATH2, "Debut");
@@ -232,10 +256,7 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
             final String OWM_NPT = "next_page_token";
             final String OWM_RES = "results";
             final String OWM_NAME = "name";
-            final String OWM_BOOL_OPENING = "open_now";
-            final String OWM_BOOL_OPENING_HOURS = "opening_hours";
-            final String OWM_TYPES = "types";
-            final String OWM_RATING = "rating";
+
             // Location coordinate
             final String OWM_GEOM = "geometry";
             final String OWM_LOCATION_MIAM = "location";
@@ -256,22 +277,68 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
             Log.d(LOG_TAG, "Toto : " + PlacesArray.length());
             String[] resultStrs = new String[PlacesArray.length()];
             for (int i = 0; i < PlacesArray.length(); i++) {
+                GooglePlace poi = new GooglePlace();
 
-                // on recup nom, addr, et coords gps...
-                String nom;
-                String address;
-                Double latres;
-                Double lngres;
+
 
 
                 // Get the JSON object representing the place
                 JSONObject place = PlacesArray.getJSONObject(i);
 
-                nom = place.getString(OWM_NAME);
-                address = place.getString(OWM_ADRESS);
+                poi.setName(place.getString(OWM_NAME));
+                poi.setAddr(place.getString(OWM_ADRESS));
 
-                latres = place.getJSONObject(OWM_GEOM).getJSONObject(OWM_LOCATION_MIAM).getDouble(OWM_LATITUDE_MIAM);
-                lngres = place.getJSONObject(OWM_GEOM).getJSONObject(OWM_LOCATION_MIAM).getDouble(OWM_LONGITUDE_MIAM);
+                poi.setLat(place.getJSONObject(OWM_GEOM).getJSONObject(OWM_LOCATION_MIAM).getDouble(OWM_LATITUDE_MIAM));
+                poi.setLong(place.getJSONObject(OWM_GEOM).getJSONObject(OWM_LOCATION_MIAM).getDouble(OWM_LONGITUDE_MIAM));
+
+
+                if (PlacesArray.getJSONObject(i).has("opening_hours")) {
+                    if (PlacesArray.getJSONObject(i).getJSONObject("opening_hours").has("open_now")) {
+                        if (PlacesArray.getJSONObject(i).getJSONObject("opening_hours").getString("open_now").equals("true")) {
+                            poi.setOpenNow("YES");
+                        } else {
+                            poi.setOpenNow("NO");
+                        }
+                    }
+                }
+
+               if (PlacesArray.getJSONObject(i).has("price_level")) {
+                   poi.setPrice(PlacesArray.getJSONObject(i).getString("price_level"));
+
+               }
+                else {
+                   poi.setPrice("Echelle de prix non renseignée");
+               }
+
+
+                if (PlacesArray.getJSONObject(i).has("rating")) {
+                    poi.setRate(PlacesArray.getJSONObject(i).getString("rating"));
+                }
+                else{
+                    poi.setRate("Note pas renseignée");
+                }
+
+                if (PlacesArray.getJSONObject(i).has("icon")) {
+                    poi.setIcon(PlacesArray.getJSONObject(i).getString("icon"));
+
+
+                        URL url = null;
+                        try {
+                            url = new URL(poi.getIcon());
+                        } catch (MalformedURLException e) {
+                            e.printStackTrace();
+                        }
+                        try {
+                            bmpIcon = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                    }
+                else {
+                    poi.setIcon("pas icon");
+                }
+
 
                 //----------------------------------------
                 SharedPreferences sharedPrefs =
@@ -280,11 +347,21 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
                         getString(R.string.pref_trnspt_key),
                         getString(R.string.pref_trnspt_pied));
                 String modeTsp;
+
                 if (tspType.equals(getString(R.string.pref_trnspt_voiture))) {
                   modeTsp = "driving";
-                } else  {
+                }
+                else if (tspType.equals(getString(R.string.pref_trnspt_bike))){
+                  modeTsp ="bicycling";
+
+
+
+                }
+                else  {
                   modeTsp = "walking";
                 }
+
+
                 // Pour récupérer le temps de parcours;
                 HttpURLConnection urlConnection = null;
                 BufferedReader reader = null;
@@ -298,7 +375,7 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
                     String uriduree = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=" +
                             latQuery + "," + lngQuery +
                             "&destinations=" +
-                            Double.toString(latres) + "," + Double.toString(lngres) + "&mode=" +
+                            Double.toString(poi.getLat()) + "," + Double.toString(poi.getLong()) + "&mode=" +
                             modeTsp;
                     Uri builtUri = Uri.parse(uriduree).buildUpon().build();
 
@@ -347,11 +424,22 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
                 }
 
                 JSONObject duree_Json = new JSONObject(JsonDuree);
-                String dureeTrajet = duree_Json.getJSONArray("rows").getJSONObject(0).getJSONArray("elements").getJSONObject(0).getJSONObject("duration").getString("text");
+               poi.setDuree(duree_Json.getJSONArray("rows").getJSONObject(0).getJSONArray("elements").getJSONObject(0).getJSONObject("duration").getString("text"));
 
                 //-----------------------------------------
-                resultStrs[i] = nom + "\n" + address + "\n" + Double.toString(latres) + "\n" + Double.toString(lngres) + "\n" + dureeTrajet;
-            }
+                if (poi.isOpenNow()){
+                    resultStrs[i] = poi.getName() + "\n" + poi.getAddr() + "\n" + Double.toString(poi.getLat()) + "\n" + Double.toString(poi.getLong()) + "\n" + poi.getDuree() + "\n" + "Ouvert en ce moment" + "\n" + poi.getPrice() + "\n" + "La note est de : "+  ((poi.getRate() == "Note pas renseignée") ? poi.getRate() : poi.getRate()+"/5  basé sur les avis utilisateurs") + "\n" + poi.getIcon();
+                    Log.d(LOG_TAG, "open");
+                }
+                else if (poi.isNotOpenNow()){
+                    resultStrs[i] = poi.getName() + "\n" + poi.getAddr() + "\n" + Double.toString(poi.getLat()) + "\n" + Double.toString(poi.getLong()) + "\n" + poi.getDuree() + "\n" + "Pas Ouvert en ce moment" + "\n" + poi.getPrice() + "\n" + "La note est de : "+ ((poi.getRate() == "Note pas renseignée") ? poi.getRate() : poi.getRate()+"/5 basé sur les avis utilisateurs") + "\n" + poi.getIcon();
+                    Log.d(LOG_TAG, "pas open");
+                }
+                else if (poi.isNotInformed()){
+                    resultStrs[i] = poi.getName() + "\n" + poi.getAddr() + "\n" + Double.toString(poi.getLat()) + "\n" + Double.toString(poi.getLong()) + "\n" + poi.getDuree() + "\n" + "Pas de renseignement sur l'ouverture" + "\n" + poi.getPrice() + "\n" + "La note est de : "+ ((poi.getRate() == "Note pas renseignée") ? poi.getRate() : poi.getRate()+"/5  basé sur les avis utilisateurs") + "\n" + poi.getIcon();
+                    Log.d(LOG_TAG, "pas d'info");
+                }
+                 }
             myProgressDialog.dismiss();
 
             if(PlacesArray.length()==0){
@@ -375,7 +463,8 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
             BufferedReader reader = null;
             String JsonStr = null;
 
-            String type = "food";
+            String type =  Utility.actualType;
+            Log.d(LOG_TAG, "Choix du type : "+type);
             String key = "AIzaSyDafj_vmRc5A7bQqu31OvXUa_RKY9vRNvI";
             String latQuery = Double.toString(Utility.latitude);
             String lngQuery = Double.toString(Utility.longitude);
@@ -385,27 +474,29 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
             try {
                 // Construct the URL for the GooglePlace API
                 final String BASE_URL = "https://maps.googleapis.com/maps/api/place/nearbysearch/json?";
-                final String LOCATION_PARAM_MIAM = "location";
-                final String TYPES_PARAM_MIAM  = "types";
-                final String UNITS_PARAM_MIAM  = "radius";
-                final String OPENNOW_PARAM_MIAM  = "opennow";
-                final String KEY_PARAM_MIAM  = "key";
-                final String PTOKEN_PARAM_MIAM  = "pagetoken";
+                final String LOCATION_PARAM = "location";
+                final String TYPES_PARAM  = "types";
+                final String UNITS_PARAM  = "radius";
+                final String RANK_PARAM = "rankby";
+                final String KEY_PARAM = "key";
+                final String PTOKEN_PARAM  = "pagetoken";
 
+                //final String OPENNOW_PARAM = "opennow";
 
                 Uri builtUri;
                 if (Utility.nextPageToken == null) {
                     builtUri = Uri.parse(BASE_URL).buildUpon()
-                            .appendQueryParameter(LOCATION_PARAM_MIAM, latQuery + "," + lngQuery)
-                            .appendQueryParameter(UNITS_PARAM_MIAM, params[0])
-                            .appendQueryParameter(TYPES_PARAM_MIAM, type)
-                            .appendQueryParameter(OPENNOW_PARAM_MIAM, "")
-                            .appendQueryParameter(KEY_PARAM_MIAM, key)
+                            .appendQueryParameter(LOCATION_PARAM, latQuery + "," + lngQuery)
+                            .appendQueryParameter(UNITS_PARAM, params[0])
+                            .appendQueryParameter(TYPES_PARAM, type)
+                            //.appendQueryParameter(OPENNOW_PARAM, "")
+                            .appendQueryParameter(RANK_PARAM,"prominence")
+                            .appendQueryParameter(KEY_PARAM, key)
                             .build();
                 }else{
                     builtUri = Uri.parse(BASE_URL).buildUpon()
-                            .appendQueryParameter(PTOKEN_PARAM_MIAM, Utility.nextPageToken)
-                            .appendQueryParameter(KEY_PARAM_MIAM, key)
+                            .appendQueryParameter(PTOKEN_PARAM, Utility.nextPageToken)
+                            .appendQueryParameter(KEY_PARAM, key)
                             .build();
                 }
 
@@ -474,7 +565,7 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
                 int i;
                 mForecastAdapter.clear();
                 mForecastAdapterDetails.clear();
-                String[] mForecastSplit = new String[5];
+                String[] mForecastSplit = new String[9];
 
 
             for(String dayForecastStr : result) {
@@ -485,6 +576,7 @@ public class ForecastFragment extends Fragment implements GoogleApiClient.Connec
                     }
                     if(mForecastSplit[0] != Utility.noResult || mForecastSplit[4]!= null){
                         mForecastAdapter.add(mForecastSplit[0] + " - " + mForecastSplit[4]);
+                        //Log.d(LOG_TAG, "add"+mForecastSplit[0]);
                     }else{
                         mForecastAdapter.add(mForecastSplit[0]);
                     }

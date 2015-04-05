@@ -118,7 +118,7 @@ public class MainActivity extends ActionBarActivity  {
         if (id == R.id.more_res) {
             if (Utility.nextPageToken == null) {
                 AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
-                dlgAlert.setMessage("Il n'y pas plus d'endroits pour se restaurer aux alentours !");
+                dlgAlert.setMessage("Il n'y pas d'autres poi aux alentours !");
                 dlgAlert.setTitle("Désolé :(");
                 dlgAlert.setPositiveButton("Ok",
                         new DialogInterface.OnClickListener() {
